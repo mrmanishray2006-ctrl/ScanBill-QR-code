@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Smart QR Billing & Store Management</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- CDN Dependencies -->
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js for analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Davidshimjs QRCode.js for generating QR codes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- HTML5 QR Code for camera scanning -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- jsPDF for exporting QR codes to PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body class="dark-theme">
+  <!-- Splash Screen -->
+  <div id="splash-screen" class="splash-screen active">
+    <div class="splash-content">
+      <div class="splash-logo">
+        <i data-lucide="qr-code"></i>
+      </div>
+      <h1>Smart QR Billing</h1>
+      <p>Store Management & Instant Checkout</p>
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Global App Wrapper -->
+  <div id="app-wrapper" style="display: none;">
+    <!-- Top Navbar -->
+    <header class="app-header">
+      <div class="header-logo" onclick="app.router.navigate('#home')">
+        <i data-lucide="shopping-bag" class="logo-icon"></i>
+        <span class="logo-text">QuickStore</span>
+      </div>
+      
+      <!-- Desktop Navigation for Owner / Customer Info -->
+      <nav class="desktop-nav">
+        <!-- Will be dynamically populated or shown based on role -->
+        <div id="nav-owner-links" class="nav-links-group" style="display: none;">
+          <a href="#owner-dashboard" class="nav-link"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+          <a href="#product-list" class="nav-link"><i data-lucide="package"></i> Products</a>
+          <a href="#inventory" class="nav-link"><i data-lucide="boxes"></i> Inventory</a>
+          <a href="#qr-gallery" class="nav-link"><i data-lucide="qr-code"></i> QR Codes</a>
+          <a href="#reports" class="nav-link"><i data-lucide="bar-chart-3"></i> Reports</a>
+          <a href="#subscription" class="nav-link"><i data-lucide="credit-card"></i> Subscription</a>
+          <a href="#store-settings" class="nav-link"><i data-lucide="settings"></i> Settings</a>
+        </div>
+        <div id="nav-customer-links" class="nav-links-group" style="display: none;">
+          <a href="#customer-home" class="nav-link"><i data-lucide="home"></i> Home</a>
+          <a href="#customer-scanner" class="nav-link"><i data-lucide="scan-line"></i> Scanner</a>
+          <a href="#customer-cart" class="nav-link cart-link-btn">
+            <i data-lucide="shopping-cart"></i> Cart
+            <span class="cart-badge" id="cart-badge-count" style="display: none;">0</span>
+          </a>
+          <a href="#customer-orders" class="nav-link"><i data-lucide="history"></i> History</a>
+        </div>
+      </nav>
+
+      <!-- User Profile & Action Area -->
+      <div class="header-actions">
+        <span id="user-display-name" class="user-name-tag" style="display: none;"></span>
+        <button id="logout-btn" class="btn btn-outline btn-sm" style="display: none;" onclick="app.auth.logout()">
+          <i data-lucide="log-out"></i> <span class="btn-text">Logout</span>
+        </button>
+        <button id="login-portal-btn" class="btn btn-primary btn-sm" onclick="app.router.navigate('#home')">
+          <i data-lucide="user"></i> Portal
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main-content">
+      
+      <!-- PAGE: HOME PORTAL -->
+      <section id="view-home" class="view-section active">
+        <div class="portal-hero">
+          <h1>Welcome to QuickStore</h1>
+          <p>Choose your entry portal to get started.</p>
+        </div>
+        <div class="portal-grid">
+          <!-- Card: Customer Portal -->
+          <div class="portal-card customer-portal" onclick="app.router.navigate('#customer-login')">
+            <div class="portal-card-icon">
+              <i data-lucide="shopping-cart"></i>
+            </div>
+            <h2>Customer Portal</h2>
+            <p>Scan product QR codes, add to cart, and checkout instantly using UPI payments.</p>
+            <span class="portal-card-action">Enter Portal <i data-lucide="arrow-right"></i></span>
+          </div>
+
+          <!-- Card: Owner Portal -->
+          <div class="portal-card owner-portal" onclick="app.router.navigate('#owner-login')">
+            <div class="portal-card-icon">
+              <i data-lucide="store"></i>
+            </div>
+            <h2>Owner / Admin Portal</h2>
+            <p>Manage product inventories, generate custom PDFs of QR codes, monitor sales dashboards, and handle store subscriptions.</p>
+            <span class="portal-card-action">Enter Portal <i data-lucide="arrow-right"></i></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: OWNER LOGIN -->
+      <section id="view-owner-login" class="view-section">
+        <div class="auth-container">
+          <div class="auth-card">
+            <h2>Owner Login</h2>
+            <p>Access your store dashboard & inventory tools</p>
+            <form id="owner-login-form" onsubmit="app.auth.handleLogin(event, 'owner')">
+              <div class="form-group">
+                <label for="owner-login-email">Email Address</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="mail"></i>
+                  <input type="email" id="owner-login-email" required placeholder="owner@store.com">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="owner-login-password">Password</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="lock"></i>
+                  <input type="password" id="owner-login-password" required placeholder="••••••••">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Log In as Owner</button>
+            </form>
+            <p class="auth-footer">Don't have an owner account? <a href="#owner-signup">Sign Up here</a></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: OWNER SIGNUP -->
+      <section id="view-owner-signup" class="view-section">
+        <div class="auth-container">
+          <div class="auth-card">
+            <h2>Create Owner Account</h2>
+            <p>Sign up to register your retail store</p>
+            <form id="owner-signup-form" onsubmit="app.auth.handleSignup(event, 'owner')">
+              <div class="form-group">
+                <label for="owner-signup-name">Full Name</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="user"></i>
+                  <input type="text" id="owner-signup-name" required placeholder="John Doe">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="owner-signup-email">Email Address</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="mail"></i>
+                  <input type="email" id="owner-signup-email" required placeholder="john@store.com">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="owner-signup-store-name">Store Name</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="store"></i>
+                  <input type="text" id="owner-signup-store-name" required placeholder="QuickStore Express">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="owner-signup-upi">UPI VPA (for Direct Customer Payments)</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="credit-card"></i>
+                  <input type="text" id="owner-signup-upi" required placeholder="store@okaxis" pattern="^[^@]+@[^@]+$" title="Please enter a valid UPI ID (e.g. store@upi)">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="owner-signup-password">Password</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="lock"></i>
+                  <input type="password" id="owner-signup-password" required minlength="6" placeholder="Min 6 characters">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Register & Get Started</button>
+            </form>
+            <p class="auth-footer">Already have an account? <a href="#owner-login">Login here</a></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: CUSTOMER LOGIN -->
+      <section id="view-customer-login" class="view-section">
+        <div class="auth-container">
+          <div class="auth-card">
+            <h2>Customer Login</h2>
+            <p>Log in to scan QRs and checkout</p>
+            <form id="customer-login-form" onsubmit="app.auth.handleLogin(event, 'customer')">
+              <div class="form-group">
+                <label for="customer-login-email">Email Address</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="mail"></i>
+                  <input type="email" id="customer-login-email" required placeholder="customer@email.com">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="customer-login-password">Password</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="lock"></i>
+                  <input type="password" id="customer-login-password" required placeholder="••••••••">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-accent btn-block">Log In as Customer</button>
+            </form>
+            <p class="auth-footer">Need a customer account? <a href="#customer-signup">Register here</a></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: CUSTOMER SIGNUP -->
+      <section id="view-customer-signup" class="view-section">
+        <div class="auth-container">
+          <div class="auth-card">
+            <h2>Customer Sign Up</h2>
+            <p>Create an account for instant QR billing</p>
+            <form id="customer-signup-form" onsubmit="app.auth.handleSignup(event, 'customer')">
+              <div class="form-group">
+                <label for="customer-signup-name">Full Name</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="user"></i>
+                  <input type="text" id="customer-signup-name" required placeholder="Jane Doe">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="customer-signup-email">Email Address</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="mail"></i>
+                  <input type="email" id="customer-signup-email" required placeholder="jane@email.com">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="customer-signup-password">Password</label>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="lock"></i>
+                  <input type="password" id="customer-signup-password" required minlength="6" placeholder="Min 6 characters">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-accent btn-block">Sign Up</button>
+            </form>
+            <p class="auth-footer">Already have an account? <a href="#customer-login">Login here</a></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: OWNER DASHBOARD -->
+      <section id="view-owner-dashboard" class="view-section">
+        <div class="dashboard-header">
+          <div>
+            <h1>Dashboard</h1>
+            <p id="dashboard-store-name">Store Overview</p>
+          </div>
+          <!-- Low Stock Status Badge -->
+          <div class="dashboard-badge-container" id="low-stock-alert-header" style="display: none;" onclick="app.router.navigate('#inventory')">
+            <span class="badge badge-danger pulse"><i data-lucide="alert-triangle"></i> Low Stock Alert</span>
+          </div>
+        </div>
+
+        <!-- Dashboard Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Today's Sales</span>
+              <i data-lucide="indian-rupee" class="stat-card-icon text-green"></i>
+            </div>
+            <div class="stat-card-value" id="stat-today-sales">₹0.00</div>
+            <div class="stat-card-desc" id="stat-sales-count">0 transactions today</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Total Products</span>
+              <i data-lucide="package" class="stat-card-icon text-primary"></i>
+            </div>
+            <div class="stat-card-value" id="stat-total-products">0</div>
+            <div class="stat-card-desc" id="stat-disabled-count">0 items disabled</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Low Stock Items</span>
+              <i data-lucide="alert-circle" class="stat-card-icon text-warning"></i>
+            </div>
+            <div class="stat-card-value" id="stat-low-stock">0</div>
+            <div class="stat-card-desc" id="stat-low-stock-desc">Products require attention</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Subscription Tier</span>
+              <i data-lucide="credit-card" class="stat-card-icon text-indigo"></i>
+            </div>
+            <div class="stat-card-value" id="stat-sub-tier">Pro</div>
+            <div class="stat-card-desc text-green" id="stat-sub-expiry">Active Plan</div>
+          </div>
+        </div>
+
+        <div class="dashboard-split-grid">
+          <!-- Charts Section -->
+          <div class="dashboard-panel chart-panel">
+            <h3>Sales History (Today vs. Past Week)</h3>
+            <div class="chart-container">
+              <canvas id="salesSummaryChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Alerts & Action Column -->
+          <div class="dashboard-panel-stack">
+            <!-- Low stock alert list -->
+            <div class="dashboard-panel alert-panel">
+              <div class="panel-header">
+                <h3>Low Stock Items</h3>
+                <a href="#inventory" class="panel-link">Manage Inventory</a>
+              </div>
+              <div class="alert-list" id="dashboard-low-stock-list">
+                <!-- Populated dynamically -->
+                <p class="empty-text">No low stock items. Excellent!</p>
+              </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="dashboard-panel recent-orders-panel">
+              <div class="panel-header">
+                <h3>Recent Transactions</h3>
+                <a href="#reports" class="panel-link">All Reports</a>
+              </div>
+              <div class="recent-orders-list" id="dashboard-orders-list">
+                <!-- Populated dynamically -->
+                <p class="empty-text">No transactions logged yet.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: PRODUCT MANAGEMENT -->
+      <section id="view-product-list" class="view-section">
+        <div class="page-title-row">
+          <div>
+            <h1>Products Directory</h1>
+            <p>Add, edit, enable/disable, and search catalog products</p>
+          </div>
+          <button class="btn btn-primary" onclick="app.products.openProductModal()">
+            <i data-lucide="plus"></i> Add Product
+          </button>
+        </div>
+
+        <!-- Filters & Search Bar -->
+        <div class="filters-card">
+          <div class="search-input-wrapper">
+            <i data-lucide="search"></i>
+            <input type="text" id="product-search-input" placeholder="Search by name, SKU or category..." oninput="app.products.filterProducts()">
+          </div>
+          <div class="filter-dropdowns">
+            <select id="product-filter-category" onchange="app.products.filterProducts()">
+              <option value="all">All Categories</option>
+              <!-- Populated dynamically -->
+            </select>
+            <select id="product-filter-status" onchange="app.products.filterProducts()">
+              <option value="all">All Statuses</option>
+              <option value="active">Enabled Only</option>
+              <option value="disabled">Disabled Only</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Products Grid -->
+        <div class="products-grid" id="products-catalog-container">
+          <!-- Dynamic products cards -->
+        </div>
+      </section>
+
+      <!-- MODAL: ADD / EDIT PRODUCT -->
+      <div id="product-modal" class="modal-overlay">
+        <div class="modal-container">
+          <div class="modal-header">
+            <h3 id="product-modal-title">Add New Product</h3>
+            <button class="modal-close" onclick="app.products.closeProductModal()"><i data-lucide="x"></i></button>
+          </div>
+          <form id="product-form" onsubmit="app.products.saveProduct(event)">
+            <input type="hidden" id="product-form-id">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="product-name">Product Name *</label>
+                <input type="text" id="product-name" required placeholder="e.g. Wireless Mouse">
+              </div>
+              <div class="form-group">
+                <label for="product-sku">SKU / Barcode ID *</label>
+                <input type="text" id="product-sku" required placeholder="e.g. MOUSE-WL-101">
+              </div>
+              <div class="form-group">
+                <label for="product-price">Price (₹) *</label>
+                <input type="number" step="0.01" id="product-price" required placeholder="999.00">
+              </div>
+              <div class="form-group">
+                <label for="product-stock">Stock Quantity *</label>
+                <input type="number" id="product-stock" required placeholder="50">
+              </div>
+              <div class="form-group">
+                <label for="product-category">Category *</label>
+                <input type="text" id="product-category" required placeholder="e.g. Electronics">
+              </div>
+              <div class="form-group">
+                <label for="product-image-url">Image URL</label>
+                <input type="url" id="product-image-url" placeholder="https://images.unsplash.com/... (optional)">
+              </div>
+            </div>
+            <div class="form-group" style="margin-top: 15px;">
+              <label for="product-description">Description</label>
+              <textarea id="product-description" rows="3" placeholder="Brief summary of product features..."></textarea>
+            </div>
+            <div class="form-row" style="margin-top: 15px;">
+              <label class="toggle-switch-wrapper">
+                <input type="checkbox" id="product-status-active" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Product Enabled (Visible to Customers)</span>
+              </label>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline" onclick="app.products.closeProductModal()">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="product-modal-submit-btn">Save Product</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- PAGE: QR CODE GALLERY -->
+      <section id="view-qr-gallery" class="view-section">
+        <div class="page-title-row">
+          <div>
+            <h1>Product QR Codes</h1>
+            <p>Generate, preview, and batch export PDF tags for shelf displaying</p>
+          </div>
+          <div class="action-buttons-group">
+            <button class="btn btn-outline" onclick="app.qr.exportSelectedPDFs()">
+              <i data-lucide="download"></i> Export Selected QR PDFs
+            </button>
+            <button class="btn btn-primary" onclick="app.qr.exportAllQRToPDF()">
+              <i data-lucide="printer"></i> Print All QRs (PDF)
+            </button>
+          </div>
+        </div>
+
+        <div class="qr-gallery-grid" id="qr-codes-container">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- MODAL: QR CODE DETAILED PREVIEW -->
+      <div id="qr-detail-modal" class="modal-overlay">
+        <div class="modal-container modal-sm">
+          <div class="modal-header">
+            <h3>QR Barcode Details</h3>
+            <button class="modal-close" onclick="app.qr.closeDetailModal()"><i data-lucide="x"></i></button>
+          </div>
+          <div class="qr-detail-body">
+            <h2 id="qr-detail-title">Product Title</h2>
+            <p id="qr-detail-sku" class="qr-sku-label">SKU: SKU-101</p>
+            <p id="qr-detail-price" class="qr-price-label">Price: ₹0.00</p>
+            <div class="qr-display-box" id="qr-canvas-holder">
+              <!-- QR Code generated here -->
+            </div>
+            <div class="qr-meta-note">
+              Scan this QR code using the customer app to instantly add this item to your cart.
+            </div>
+          </div>
+          <div class="modal-footer justify-center">
+            <button class="btn btn-outline btn-block" id="qr-detail-pdf-btn">
+              <i data-lucide="file-text"></i> Download QR PDF tag
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: INVENTORY MANAGEMENT -->
+      <section id="view-inventory" class="view-section">
+        <div class="page-title-row">
+          <div>
+            <h1>Inventory Control</h1>
+            <p>Update stock quantities, set alerts, and manage product listings</p>
+          </div>
+        </div>
+
+        <div class="inventory-card">
+          <div class="inventory-table-actions">
+            <div class="search-input-wrapper">
+              <i data-lucide="search"></i>
+              <input type="text" id="inventory-search-input" placeholder="Search product stock levels..." oninput="app.inventory.filterInventory()">
+            </div>
+            <button class="btn btn-outline" onclick="app.inventory.loadStockLevels()">
+              <i data-lucide="refresh-cw"></i> Refresh Levels
+            </button>
+          </div>
+          
+          <div class="table-responsive">
+            <table class="app-table">
+              <thead>
+                <tr>
+                  <th>Product Details</th>
+                  <th>SKU</th>
+                  <th>Category</th>
+                  <th>Current Stock</th>
+                  <th>Status Indicator</th>
+                  <th style="text-align: right;">Manual Adjustment</th>
+                </tr>
+              </thead>
+              <tbody id="inventory-table-body">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: SALES REPORTS -->
+      <section id="view-reports" class="view-section">
+        <div class="page-title-row">
+          <div>
+            <h1>Sales Reports & Invoices</h1>
+            <p>Export daily/monthly summaries and track payment details</p>
+          </div>
+          <div class="action-buttons-group">
+            <button class="btn btn-outline" onclick="app.reports.exportInvoicesCSV()">
+              <i data-lucide="download"></i> Export Invoices CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="reports-grid">
+          <!-- Summary Cards -->
+          <div class="report-totals-card">
+            <h3>Sales Overview</h3>
+            <div class="report-totals-split">
+              <div class="total-metric">
+                <label>Gross Sales</label>
+                <div class="metric-value text-green" id="report-gross-sales">₹0.00</div>
+              </div>
+              <div class="total-metric">
+                <label>Tax Collected</label>
+                <div class="metric-value text-indigo" id="report-tax-collected">₹0.00</div>
+              </div>
+              <div class="total-metric">
+                <label>Discounts Awarded</label>
+                <div class="metric-value text-warning" id="report-discounts-awarded">₹0.00</div>
+              </div>
+              <div class="total-metric">
+                <label>Net Order Count</label>
+                <div class="metric-value text-primary" id="report-total-orders">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Card -->
+          <div class="report-charts-card">
+            <h3>Financial Performance Distribution</h3>
+            <div class="chart-wrapper">
+              <canvas id="categoryDistributionChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="invoice-list-panel">
+          <div class="panel-header">
+            <h3>Transaction Ledger</h3>
+            <div class="table-filters">
+              <input type="date" id="report-filter-start-date" onchange="app.reports.filterTransactions()">
+              <input type="date" id="report-filter-end-date" onchange="app.reports.filterTransactions()">
+              <select id="report-filter-status" onchange="app.reports.filterTransactions()">
+                <option value="all">All Payments</option>
+                <option value="paid">Completed</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="app-table">
+              <thead>
+                <tr>
+                  <th>Invoice Number</th>
+                  <th>Timestamp</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Total Amount</th>
+                  <th>UPI Tx Ref</th>
+                  <th>Status</th>
+                  <th style="text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="reports-invoice-table-body">
+                <!-- Log entries populated here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: OWNER SUBSCRIPTION MANAGEMENT -->
+      <section id="view-subscription" class="view-section">
+        <div class="page-title-row">
+          <div>
+            <h1>Subscription Management</h1>
+            <p>Upgrade or renew your billing tier, view payment history and logs</p>
+          </div>
+        </div>
+
+        <div class="subscription-status-row">
+          <div class="sub-status-card">
+            <div class="sub-header-row">
+              <div class="sub-status-info">
+                <span class="sub-badge" id="sub-active-badge">Active</span>
+                <h2 id="sub-current-plan">Pro Store Tier</h2>
+                <p id="sub-expiry-date">Expires on: July 31, 2026</p>
+              </div>
+              <div class="sub-status-price">
+                <div class="price-val">₹2,499</div>
+                <div class="price-period">/ month</div>
+              </div>
+            </div>
+            <div class="sub-progress-bar-container">
+              <div class="sub-progress-bar" id="sub-days-progress" style="width: 75%;"></div>
+            </div>
+            <div class="sub-progress-text" id="sub-days-text">24 days remaining in billing cycle. Auto-renew is enabled.</div>
+          </div>
+        </div>
+
+        <h3 class="tier-heading">Available Subscription Plans</h3>
+        <div class="tiers-grid">
+          <!-- Tier: Starter -->
+          <div class="tier-card" id="tier-card-starter">
+            <div class="tier-badge-label">Entry</div>
+            <h2>Starter Store</h2>
+            <div class="tier-price">
+              <span class="amt">₹999</span>
+              <span class="per">/ mo</span>
+            </div>
+            <p class="tier-desc">Perfect for small retailers starting with digital billing workflows.</p>
+            <ul class="tier-features">
+              <li><i data-lucide="check"></i> Up to 50 active products</li>
+              <li><i data-lucide="check"></i> Basic stock counting</li>
+              <li><i data-lucide="check"></i> Instant QR codes</li>
+              <li><i data-lucide="check"></i> Web QR PDF export</li>
+              <li class="disabled"><i data-lucide="x"></i> Advanced sales reports</li>
+              <li class="disabled"><i data-lucide="x"></i> Custom developer keys</li>
+            </ul>
+            <button class="btn btn-outline btn-block" onclick="app.subscription.changePlan('starter')">Downgrade to Starter</button>
+          </div>
+
+          <!-- Tier: Pro -->
+          <div class="tier-card pro active" id="tier-card-pro">
+            <div class="tier-badge-label popular">Popular</div>
+            <h2>Pro Store</h2>
+            <div class="tier-price">
+              <span class="amt">₹2,499</span>
+              <span class="per">/ mo</span>
+            </div>
+            <p class="tier-desc">For active storefronts requiring fully featured dashboards and PDF logs.</p>
+            <ul class="tier-features">
+              <li><i data-lucide="check"></i> Up to 500 active products</li>
+              <li><i data-lucide="check"></i> Full inventory levels & alerts</li>
+              <li><i data-lucide="check"></i> Instant QR codes</li>
+              <li><i data-lucide="check"></i> PDF batch tag downloads</li>
+              <li><i data-lucide="check"></i> Sales reports & charts</li>
+              <li class="disabled"><i data-lucide="x"></i> Dedicated DB instance</li>
+            </ul>
+            <button class="btn btn-primary btn-block" disabled>Current Active Plan</button>
+          </div>
+
+          <!-- Tier: Enterprise -->
+          <div class="tier-card" id="tier-card-enterprise">
+            <div class="tier-badge-label">Premium</div>
+            <h2>Enterprise Store</h2>
+            <div class="tier-price">
+              <span class="amt">₹5,999</span>
+              <span class="per">/ mo</span>
+            </div>
+            <p class="tier-desc">Built for chains and high-volume stores needing dedicated server setups.</p>
+            <ul class="tier-features">
+              <li><i data-lucide="check"></i> Unlimited active products</li>
+              <li><i data-lucide="check"></i> Advanced predictive inventory</li>
+              <li><i data-lucide="check"></i> Dynamic pricing sheets</li>
+              <li><i data-lucide="check"></i> Multi-printer PDF layouts</li>
+              <li><i data-lucide="check"></i> Dedicated cloud support</li>
+              <li><i data-lucide="check"></i> Customized UPI deep linking</li>
+            </ul>
+            <button class="btn btn-outline btn-block" onclick="app.subscription.changePlan('enterprise')">Upgrade to Enterprise</button>
+          </div>
+        </div>
+
+        <div class="billing-history-panel">
+          <h3>Billing & Renewal Logs</h3>
+          <div class="table-responsive">
+            <table class="app-table">
+              <thead>
+                <tr>
+                  <th>Billing ID</th>
+                  <th>Billing Date</th>
+                  <th>Tier Detail</th>
+                  <th>Amount Paid</th>
+                  <th>Payment Method</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="subscription-billing-table">
+                <!-- Dynamic logs -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: STORE SETTINGS -->
+      <section id="view-store-settings" class="view-section">
+        <div class="page-title-row">
+          <div>
+            <h1>Store Settings</h1>
+            <p>Manage payment settings, merchant UPI credentials, and profile options</p>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <!-- Column 1: Store profile -->
+          <div class="settings-card">
+            <h3>Store Profile</h3>
+            <form id="settings-profile-form" onsubmit="app.settings.saveProfile(event)">
+              <div class="form-group">
+                <label for="settings-store-name">Store Name</label>
+                <input type="text" id="settings-store-name" required>
+              </div>
+              <div class="form-group">
+                <label for="settings-store-address">Physical Address</label>
+                <textarea id="settings-store-address" rows="3"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="settings-store-logo">Store Logo URL</label>
+                <input type="url" id="settings-store-logo" placeholder="https://unsplash.com/logo.png">
+              </div>
+              <button type="submit" class="btn btn-primary">Update Profile</button>
+            </form>
+          </div>
+
+          <!-- Column 2: Payment credentials -->
+          <div class="settings-card">
+            <h3>Payment Gateway & UPI Integration</h3>
+            <p class="settings-hint">Select how payments are credited. Default is direct peer-to-peer UPI transfer to your bank account.</p>
+            <form id="settings-payment-form" onsubmit="app.settings.savePayments(event)">
+              <div class="form-group">
+                <label for="settings-upi-id">Merchant UPI Address (VPA) *</label>
+                <input type="text" id="settings-upi-id" required placeholder="e.g. store@okaxis">
+                <span class="input-tip">All QR transactions credit directly to this bank account instantly.</span>
+              </div>
+              <div class="form-group">
+                <label for="settings-merchant-name">Merchant Display Name *</label>
+                <input type="text" id="settings-merchant-name" required placeholder="e.g. QuickStore Grocery">
+              </div>
+              <div class="form-group">
+                <label for="settings-razorpay-key">Razorpay Key ID (For Credit/Debit Card Backups)</label>
+                <input type="text" id="settings-razorpay-key" placeholder="rzp_test_xxxxxx (optional)">
+              </div>
+              <div class="form-group">
+                <label class="toggle-switch-wrapper">
+                  <input type="checkbox" id="settings-auto-invoice" checked>
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Auto-generate invoices & stock alerts after transaction</span>
+                </label>
+              </div>
+              <button type="submit" class="btn btn-primary">Save Gateway Settings</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: CUSTOMER HOME -->
+      <section id="view-customer-home" class="view-section">
+        <div class="customer-welcome">
+          <h1 id="customer-home-greeting">Hello, Shopper!</h1>
+          <p>Scan QR codes around the store to instantly compile and pay your bill.</p>
+        </div>
+
+        <div class="scanner-shortcut-banner" onclick="app.router.navigate('#customer-scanner')">
+          <div class="shortcut-icon-circle pulse-blue">
+            <i data-lucide="scan-line"></i>
+          </div>
+          <div>
+            <h3>Open Quick Scanner</h3>
+            <p>Scan product tags to add directly to your cart</p>
+          </div>
+          <i data-lucide="chevron-right" class="shortcut-arrow"></i>
+        </div>
+
+        <div class="customer-stats-grid">
+          <div class="cust-stat-card" onclick="app.router.navigate('#customer-cart')">
+            <div class="cust-stat-icon text-indigo">
+              <i data-lucide="shopping-cart"></i>
+            </div>
+            <div class="cust-stat-details">
+              <div class="stat-num" id="cust-home-cart-count">0 Items</div>
+              <div class="stat-lbl">Active Shopping Cart</div>
+            </div>
+          </div>
+          
+          <div class="cust-stat-card" onclick="app.router.navigate('#customer-orders')">
+            <div class="cust-stat-icon text-green">
+              <i data-lucide="receipt"></i>
+            </div>
+            <div class="cust-stat-details">
+              <div class="stat-num" id="cust-home-orders-count">0 Receipts</div>
+              <div class="stat-lbl">Purchase History Log</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="recent-purchases-panel">
+          <h3>My Recent Transactions</h3>
+          <div class="customer-recent-orders-list" id="customer-recent-orders-list">
+            <!-- Dynamic receipts list -->
+            <p class="empty-text">No purchases yet. Start shopping!</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: CUSTOMER QR SCANNER -->
+      <section id="view-customer-scanner" class="view-section">
+        <div class="scanner-header-bar">
+          <button class="btn-circle-nav" onclick="app.router.navigate('#customer-home')"><i data-lucide="arrow-left"></i></button>
+          <h2>Scan Product Tag</h2>
+          <div style="width: 40px;"></div> <!-- Spacer -->
+        </div>
+
+        <div class="scanner-view-wrapper">
+          <div class="scanner-preview-container">
+            <!-- html5-qrcode camera stream target -->
+            <div id="qr-camera-stream"></div>
+            
+            <div class="scanner-overlay-border">
+              <div class="scanner-bracket top-left"></div>
+              <div class="scanner-bracket top-right"></div>
+              <div class="scanner-bracket bottom-left"></div>
+              <div class="scanner-bracket bottom-right"></div>
+              <div class="scanner-laser-line"></div>
+            </div>
+          </div>
+          
+          <div class="scanner-instructions">
+            <p class="scanner-text">Align product barcode/QR code inside the guidelines</p>
+            <div class="scanner-status-tag" id="scanner-feedback">Initializing camera feed...</div>
+          </div>
+          
+          <!-- Mock input toggle for testing without camera -->
+          <div class="scanner-fallback-tool">
+            <p class="fallback-title">Demo Testing Tools:</p>
+            <div class="fallback-form">
+              <select id="scanner-demo-product-select">
+                <!-- Dynamic choices of products to simulate scanning -->
+              </select>
+              <button class="btn btn-accent" onclick="app.scanner.simulateScan()">Simulate QR Scan</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: CUSTOMER CART -->
+      <section id="view-customer-cart" class="view-section">
+        <div class="page-title-row">
+          <div>
+            <h1>Shopping Cart</h1>
+            <p>Adjust item counts and apply discounts</p>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="app.cart.clearActiveCart()">
+            <i data-lucide="trash-2"></i> Clear Cart
+          </button>
+        </div>
+
+        <div class="cart-layout-container">
+          <!-- Cart List -->
+          <div class="cart-items-panel" id="cart-items-list-container">
+            <!-- Dynamic cart items list -->
+          </div>
+
+          <!-- Checkout invoice summmary card -->
+          <div class="cart-summary-sidebar">
+            <div class="summary-card">
+              <h3>Receipt Totals</h3>
+              <div class="summary-row">
+                <span>Subtotal</span>
+                <span id="cart-summary-subtotal">₹0.00</span>
+              </div>
+              <div class="summary-row">
+                <span>CGST/SGST Tax (18%)</span>
+                <span id="cart-summary-tax">₹0.00</span>
+              </div>
+              <div class="summary-row">
+                <span>Promotional Discount (10%)</span>
+                <span id="cart-summary-discount" class="text-green">-₹0.00</span>
+              </div>
+              <hr class="summary-divider">
+              <div class="summary-row total-row">
+                <span>Total Amount</span>
+                <span id="cart-summary-total">₹0.00</span>
+              </div>
+
+              <!-- Promo Code Box -->
+              <div class="promo-box">
+                <input type="text" id="cart-promo-input" placeholder="PROMO10" value="PROMO10" disabled>
+                <button class="btn btn-outline btn-sm" disabled>Applied</button>
+              </div>
+
+              <button class="btn btn-accent btn-block btn-lg" onclick="app.cart.proceedToCheckout()" id="cart-checkout-btn">
+                Proceed to Checkout <i data-lucide="arrow-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: CHECKOUT BILL INVOICE PREVIEW -->
+      <section id="view-checkout" class="view-section">
+        <div class="scanner-header-bar">
+          <button class="btn-circle-nav" onclick="app.router.navigate('#customer-cart')"><i data-lucide="arrow-left"></i></button>
+          <h2>Invoice Billing Summary</h2>
+          <div style="width: 40px;"></div>
+        </div>
+
+        <div class="invoice-container">
+          <div class="invoice-preview-card">
+            <!-- Invoice Header -->
+            <div class="invoice-bill-header">
+              <div class="inv-brand">
+                <i data-lucide="shopping-bag" class="inv-logo"></i>
+                <div>
+                  <h3 id="invoice-store-name">Store Name</h3>
+                  <p id="invoice-store-address">Store Address Details</p>
+                </div>
+              </div>
+              <div class="inv-number-meta">
+                <h4 id="invoice-id-tag">INV-XXXXXX</h4>
+                <p id="invoice-date-tag">Date: July 06, 2026</p>
+              </div>
+            </div>
+
+            <!-- Customer Meta -->
+            <div class="invoice-customer-row">
+              <div>
+                <strong>Billed To:</strong>
+                <p id="invoice-customer-name">Customer Name</p>
+                <p id="invoice-customer-email">Customer Email</p>
+              </div>
+              <div class="text-right">
+                <strong>Payment Method:</strong>
+                <p>UPI Intent Gateway</p>
+              </div>
+            </div>
+
+            <!-- Items Table -->
+            <table class="invoice-table">
+              <thead>
+                <tr>
+                  <th>Product Title</th>
+                  <th class="text-center">Price</th>
+                  <th class="text-center">Qty</th>
+                  <th class="text-right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody id="invoice-table-body">
+                <!-- Dynamically listed item rows -->
+              </tbody>
+            </table>
+
+            <!-- Financial Totals -->
+            <div class="invoice-totals-section">
+              <div class="totals-flex">
+                <div class="totals-col">
+                  <div class="row-entry"><span>Subtotal:</span><span id="invoice-val-sub">₹0.00</span></div>
+                  <div class="row-entry"><span>GST Tax (18%):</span><span id="invoice-val-tax">₹0.00</span></div>
+                  <div class="row-entry"><span>Coupon Disc (10%):</span><span id="invoice-val-disc">-₹0.00</span></div>
+                  <div class="row-entry grand-total-entry"><span>Final Net Total:</span><span id="invoice-val-total">₹0.00</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="invoice-legal-note">
+              This invoice is generated automatically upon checkout scanner verification. Please ensure that all products are scanned before initiating transaction.
+            </div>
+          </div>
+
+          <div class="invoice-actions-row">
+            <button class="btn btn-outline" onclick="app.router.navigate('#customer-cart')">Back to Cart</button>
+            <button class="btn btn-accent" onclick="app.checkout.initiateUPIPayment()">
+              Proceed to UPI Payment <i data-lucide="wallet"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: UPI PAYMENT PORTAL -->
+      <section id="view-upi-payment" class="view-section">
+        <div class="scanner-header-bar">
+          <button class="btn-circle-nav" onclick="app.router.navigate('#checkout')"><i data-lucide="arrow-left"></i></button>
+          <h2>UPI Secure Checkout</h2>
+          <div style="width: 40px;"></div>
+        </div>
+
+        <div class="upi-payment-wrapper">
+          <div class="upi-payment-card">
+            <div class="upi-brand-row">
+              <i data-lucide="shield-check" class="secure-icon text-green"></i>
+              <div>
+                <h3>BHIM UPI Smart Gateway</h3>
+                <p>Transfer direct to Owner's bank account</p>
+              </div>
+            </div>
+
+            <div class="upi-merchant-details">
+              <p class="lbl">Credited To:</p>
+              <h4 id="upi-payee-name">Owner Merchant Name</h4>
+              <p class="vpa" id="upi-payee-vpa">owner@upi</p>
+            </div>
+
+            <div class="upi-amount-display">
+              <span class="lbl">Amount to Pay</span>
+              <h2 id="upi-pay-amount">₹0.00</h2>
+              <span class="inv-tag" id="upi-pay-invoice-num">INV-1029</span>
+            </div>
+
+            <!-- UPI Code generated here -->
+            <div class="upi-qr-frame">
+              <div id="upi-dynamic-qr-holder">
+                <!-- QR canvas injected here -->
+              </div>
+              <div class="qr-label-hint">Scan with any UPI app (GPay, PhonePe, Paytm)</div>
+            </div>
+
+            <!-- Deeplink button for mobile browsers -->
+            <div class="upi-deeplink-holder">
+              <a href="#" class="btn btn-primary btn-block btn-lg" id="upi-app-deeplink-btn">
+                <i data-lucide="smartphone"></i> Pay via Mobile App
+              </a>
+            </div>
+          </div>
+
+          <!-- PAYMENT SANDBOX PANEL (Crucial for validation and testing) -->
+          <div class="payment-sandbox-panel">
+            <div class="sandbox-header">
+              <i data-lucide="terminal"></i>
+              <h4>UPI Sandbox Simulation Controller</h4>
+            </div>
+            <p>Validate the payment callbacks, orders log update, stock depletion levels, and receipts generation trigger.</p>
+            <div class="sandbox-buttons">
+              <button class="btn btn-outline text-red border-red" onclick="app.checkout.simulatePaymentFailure()">
+                Simulate Failure <i data-lucide="x-circle"></i>
+              </button>
+              <button class="btn btn-accent" onclick="app.checkout.simulatePaymentSuccess()">
+                Simulate Success & Verify <i data-lucide="check-circle2"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: INVOICE / RECEIPT CONFIRMATION -->
+      <section id="view-receipt" class="view-section">
+        <div class="receipt-success-splash">
+          <div class="success-icon-circle scale-in">
+            <i data-lucide="check"></i>
+          </div>
+          <h1>Transaction Successful</h1>
+          <p>Your payment has been received and stock inventory updated.</p>
+        </div>
+
+        <div class="invoice-container">
+          <div class="invoice-preview-card receipt-style" id="printable-receipt-card">
+            <!-- Receipt Header -->
+            <div class="invoice-bill-header">
+              <div class="inv-brand">
+                <i data-lucide="shopping-bag" class="inv-logo text-green"></i>
+                <div>
+                  <h3 id="receipt-store-name">Store Name</h3>
+                  <p id="receipt-store-address">Store Address Details</p>
+                </div>
+              </div>
+              <div class="inv-number-meta">
+                <span class="badge badge-success" style="margin-bottom: 5px;">PAID</span>
+                <h4 id="receipt-id-tag">INV-XXXXXX</h4>
+                <p id="receipt-date-tag">Date: July 06, 2026</p>
+              </div>
+            </div>
+
+            <!-- Customer Meta -->
+            <div class="invoice-customer-row">
+              <div>
+                <strong>Billed To:</strong>
+                <p id="receipt-customer-name">Customer Name</p>
+                <p id="receipt-customer-email">Customer Email</p>
+              </div>
+              <div class="text-right">
+                <strong>UPI Transaction Reference:</strong>
+                <p id="receipt-tx-ref" class="text-green font-mono">TXN-90218903</p>
+                <p id="receipt-timestamp-tag" class="text-sm">Paid At: 23:55:00</p>
+              </div>
+            </div>
+
+            <!-- Items Table -->
+            <table class="invoice-table">
+              <thead>
+                <tr>
+                  <th>Product Title</th>
+                  <th class="text-center">Price</th>
+                  <th class="text-center">Qty</th>
+                  <th class="text-right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody id="receipt-table-body">
+                <!-- Dynamically listed item rows -->
+              </tbody>
+            </table>
+
+            <!-- Financial Totals -->
+            <div class="invoice-totals-section">
+              <div class="totals-flex">
+                <div class="totals-col">
+                  <div class="row-entry"><span>Subtotal:</span><span id="receipt-val-sub">₹0.00</span></div>
+                  <div class="row-entry"><span>GST Tax (18%):</span><span id="receipt-val-tax">₹0.00</span></div>
+                  <div class="row-entry"><span>Coupon Disc (10%):</span><span id="receipt-val-disc">-₹0.00</span></div>
+                  <div class="row-entry grand-total-entry"><span>Final Net Paid:</span><span id="receipt-val-total">₹0.00</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="invoice-legal-note text-center">
+              Thank you for shopping with us! This is a digital invoice sent to your email.
+            </div>
+          </div>
+
+          <div class="invoice-actions-row">
+            <button class="btn btn-outline" onclick="app.receipt.printReceipt()">
+              <i data-lucide="printer"></i> Print Invoice / PDF
+            </button>
+            <button class="btn btn-accent" onclick="app.router.navigate('#customer-home')">
+              Return Home <i data-lucide="home"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: CUSTOMER ORDER HISTORY -->
+      <section id="view-customer-orders" class="view-section">
+        <div class="page-title-row">
+          <div>
+            <h1>Purchase History</h1>
+            <p>Review invoices and transaction logs of past checkouts</p>
+          </div>
+        </div>
+
+        <div class="orders-history-container">
+          <div class="orders-table-card">
+            <div class="table-responsive">
+              <table class="app-table">
+                <thead>
+                  <tr>
+                    <th>Invoice Number</th>
+                    <th>Date & Time</th>
+                    <th>Items Purchased</th>
+                    <th>Total Paid</th>
+                    <th>Payment Reference</th>
+                    <th style="text-align: right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="customer-orders-table-body">
+                  <!-- Log entries populated here -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar for Mobile Screens (Dynamic role toggled) -->
+    <nav class="mobile-nav" id="mobile-nav-bar" style="display: none;">
+      <!-- Customer Bottom Nav Items -->
+      <div id="mobile-customer-nav" class="mobile-nav-group" style="display: none;">
+        <a href="#customer-home" class="mobile-nav-item">
+          <i data-lucide="home"></i>
+          <span>Home</span>
+        </a>
+        <a href="#customer-scanner" class="mobile-nav-item scanner-nav-btn">
+          <div class="scanner-btn-circle">
+            <i data-lucide="scan-line"></i>
+          </div>
+          <span>Scan QR</span>
+        </a>
+        <a href="#customer-cart" class="mobile-nav-item">
+          <div style="position: relative; display: inline-block;">
+            <i data-lucide="shopping-cart"></i>
+            <span class="cart-badge" id="mobile-cart-badge-count" style="display: none;">0</span>
+          </div>
+          <span>Cart</span>
+        </a>
+        <a href="#customer-orders" class="mobile-nav-item">
+          <i data-lucide="history"></i>
+          <span>History</span>
+        </a>
+      </div>
+      
+      <!-- Owner Bottom Nav Items -->
+      <div id="mobile-owner-nav" class="mobile-nav-group" style="display: none;">
+        <a href="#owner-dashboard" class="mobile-nav-item">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dash</span>
+        </a>
+        <a href="#product-list" class="mobile-nav-item">
+          <i data-lucide="package"></i>
+          <span>Products</span>
+        </a>
+        <a href="#inventory" class="mobile-nav-item">
+          <i data-lucide="boxes"></i>
+          <span>Stock</span>
+        </a>
+        <a href="#qr-gallery" class="mobile-nav-item">
+          <i data-lucide="qr-code"></i>
+          <span>QRs</span>
+        </a>
+        <a href="#reports" class="mobile-nav-item">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Reports</span>
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
