@@ -1,32 +1,33 @@
 /* Design System Custom Properties & Tokens */
 :root {
-  --bg-primary: #FFFFFF;
-  --bg-secondary: #0f172a;
-  --card-bg: rgba(30, 41, 59, 0.7);
-  --card-bg-solid: #1e293b;
-  --card-border: rgba(255, 255, 255, 0.08);
+  /*Background*/
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --card-bg: rgba(255, 255, 255, 0.85);
+  --card-bg-solid: #ffffff;
+  --card-border: rgba(226, 232, 240, 0.08);
   --border-focus: #4f46e5;
+  /*TEXT COLOURS*/
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  /* VIBRANT ACCENTS*/
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  --primary-gradient-hover: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
   
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --accent-blue: #0284c7;
+  --accent-blue-bg: rgba(2, 132, 199, 0.1);
+  /* Status Colors*/
+  --success: #059669;
+  --success-bg: rgba(5, 150, 105, 0.1);
   
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-  --primary-gradient-hover: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+  --warning: #d97706;
+  --warning-bg: rgba(217, 119, 6, 0.1);
   
-  --accent-blue: #0ea5e9;
-  --accent-blue-bg: rgba(14, 165, 233, 0.15);
-  
-  --success: #10b981;
-  --success-bg: rgba(16, 185, 129, 0.15);
-  
-  --warning: #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.15);
-  
-  --danger: #ef4444;
-  --danger-bg: rgba(239, 68, 68, 0.15);
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.1);
   
   --border-radius-sm: 8px;
   --border-radius: 16px;
