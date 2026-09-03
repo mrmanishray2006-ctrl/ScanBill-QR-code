@@ -16,7 +16,7 @@ export default function OwnerDashboard() {
   
   // Dashboard stats
   const [stats, setStats] = useState<any>({
-    todaySales: 0,
+    todaySales: 10,
     yesterdaySales: 0,
     weeklySales: 0,
     monthlySales: 0,
